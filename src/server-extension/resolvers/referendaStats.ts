@@ -143,15 +143,18 @@ export class ReferendaStats {
 
     @Field(() => Number, { nullable: true })
     quiz_fully_correct_perc!: number
+    
+    @Field(() => Number, { nullable: true })
+    questions_count!: number
 
     @Field(() => Number, { nullable: true })
-    count_1_question_correct_perc!: number
+    count_1_question_correct!: number
 
     @Field(() => Number, { nullable: true })
-    count_2_question_correct_perc!: number
+    count_2_question_correct!: number
 
     @Field(() => Number, { nullable: true })
-    count_3_question_correct_perc!: number
+    count_3_question_correct!: number
 
     @Field(() => Number, { nullable: false })
     count_direct!: number
