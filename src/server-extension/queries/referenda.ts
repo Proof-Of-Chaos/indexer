@@ -408,13 +408,14 @@ export const referendaStats = `
 
               SELECT 
                 referendum_index
+                , questions_count
                 , SUM(CASE WHEN correct_answers_count = questions_count THEN 1 ELSE 0 END) AS count_fully_correct
                 , SUM(CASE WHEN correct_answers_count = 1 THEN 1 ELSE 0 END) AS count_1_question_correct
                 , SUM(CASE WHEN correct_answers_count = 2 THEN 1 ELSE 0 END) AS count_2_question_correct
                 , SUM(CASE WHEN correct_answers_count = 3 THEN 1 ELSE 0 END) AS count_3_question_correct
                 , COUNT(distinct wallet) AS count_quiz_attended_wallets
               FROM account_correct_answers
-              GROUP BY 1
+              GROUP BY 1,2
 
             ), 
 
@@ -467,9 +468,10 @@ export const referendaStats = `
               , count_quiz_attended_wallets
               , count_fully_correct
               , count_fully_correct AS quiz_fully_correct_perc
-              , count_1_question_correct AS count_1_question_correct_perc
-              , count_2_question_correct AS count_2_question_correct_perc
-              , count_3_question_correct AS count_3_question_correct_perc
+              , questions_count
+              , count_1_question_correct
+              , count_2_question_correct
+              , count_3_question_correct
               , count_direct
               , count_delegated
               , voted_amount_direct
