@@ -86,8 +86,12 @@ export const accountStats = `
                 , n.referendum_index AS first_referendum_index
                 , n.timestamp AS first_voting_timestamp
                 , CASE WHEN lock_period = 0 THEN 0.1
-                       ELSE lock_period 
-                  END AS conviction
+                    WHEN lock_period = 4 THEN 3
+                    WHEN lock_period = 8 THEN 4
+                    WHEN lock_period = 16 THEN 5
+                    WHEN lock_period = 32 THEN 6
+                    ELSE lock_period 
+                END AS conviction
                 , CASE WHEN decision = 'abstain' THEN COALESCE((balance ->> 'aye')::decimal(38,0) / 1000000000000, 0) + COALESCE((balance ->> 'nay')::decimal(38,0) / 1000000000000, 0)
                        ELSE COALESCE((balance ->> 'value')::decimal(38,0) / 1000000000000, 0)
                   END AS balance_value
@@ -105,8 +109,7 @@ export const accountStats = `
                        THEN 'validator'
                        WHEN is_validator = false AND is_councillor = true
                        THEN 'councillor'
-                       WHEN is_validator = false AND is_councillor = false
-                       THEN 'normal'
+                       ELSE 'normal'
                   END AS voter_type
                 , delegated_to
                 FROM valid_vote AS v
