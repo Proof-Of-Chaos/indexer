@@ -19,7 +19,7 @@ export class gov2AccountStats {
     @Field(() => Date, { nullable: true })
     first_voting_timestamp!: Date
 
-    @Field(() => Number, { nullable: false })
+    @Field(() => Number, { nullable: true })
     conviction!: number
 
     @Field(() => String, { nullable: true })
