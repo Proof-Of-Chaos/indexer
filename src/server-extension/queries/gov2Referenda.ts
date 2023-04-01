@@ -20,6 +20,7 @@ export const gov2referendaStatsQuery = `
               , decision_deposit_amount::decimal(38,0) / 1000000000000 AS decision_deposit_amount
               , submission_deposit_who
               , submission_deposit_amount::decimal(38,0) / 1000000000000 AS submission_deposit_amount
+              , track::int as track
               FROM open_gov_referendum
               WHERE NOT (index = ANY ($1) )
 
@@ -47,13 +48,23 @@ export const gov2referendaStatsQuery = `
             
             ), 
 
+            timeline_decision_started AS (
+
+              SELECT 
+                referendum_index
+              , timestamp as decision_started_at
+              FROM referendum_timeline_flatten
+              WHERE status = 'DecisionStarted'
+            
+            ), 
+
             timeline_passed AS (
 
               SELECT 
                 referendum_index
               , timestamp as passed_at
               FROM referendum_timeline_flatten
-              WHERE status = 'Approved'
+              WHERE status in ('Approved', 'Comfirmed')
             
             ), 
 
@@ -77,6 +88,16 @@ export const gov2referendaStatsQuery = `
             
             ), 
 
+            timeline_timedout AS (
+
+              SELECT 
+                referendum_index
+              , timestamp as timedout_at
+              FROM referendum_timeline_flatten
+              WHERE status = 'TimedOut'
+            
+            ), 
+
             refined_timeline AS (
 
               SELECT * 
@@ -86,6 +107,10 @@ export const gov2referendaStatsQuery = `
               FULL OUTER JOIN timeline_not_passed
                 USING (referendum_index)
               FULL OUTER JOIN timeline_cancelled
+                USING (referendum_index)
+              FULL OUTER JOIN timeline_timedout
+                USING (referendum_index)
+              FULL OUTER JOIN timeline_decision_started
                 USING (referendum_index)
 
             ),
@@ -441,6 +466,7 @@ export const gov2referendaStatsQuery = `
               , decision_deposit_amount
               , submission_deposit_who
               , submission_deposit_amount
+              , r.track
               , r.preimage_method AS method
               , r.preimage_section AS section
               , c.count_aye
@@ -476,6 +502,9 @@ export const gov2referendaStatsQuery = `
               , t.passed_at
               , t.not_passed_at
               , t.cancelled_at
+              , t.executed_at
+              , t.timedout_at
+              , t.decision_started_at
               , ca.count_quiz_attended_wallets
               , ca.count_fully_correct
               , ca.count_fully_correct AS quiz_fully_correct_perc

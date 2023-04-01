@@ -39,6 +39,9 @@ export class gov2ReferendaStats {
     @Field(() => Number, { nullable: true })
     submission_deposit_amount!: number
 
+    @Field(() => Number, { nullable: true })
+    track!: number
+
     @Field(() => String, { nullable: true })
     method!: string
 
@@ -135,9 +138,6 @@ export class gov2ReferendaStats {
     @Field(() => Number, { nullable: true })
     count_3_4_4_4_vote_duration_perc!: number
 
-    // @Field(() => Date, { nullable: true })
-    // executed_at!: Date
-
     @Field(() => Date, { nullable: true })
     passed_at!: Date
 
@@ -146,6 +146,15 @@ export class gov2ReferendaStats {
 
     @Field(() => Date, { nullable: true })
     cancelled_at!: Date
+
+    @Field(() => Date, { nullable: true })
+    executed_at!: Date
+
+    @Field(() => Date, { nullable: true })
+    timedout_at!: Date
+
+    @Field(() => Date, { nullable: true })
+    decision_started_at!: Date
 
     // @Field(() => String, { nullable: false })
     // threshold_type!: string
