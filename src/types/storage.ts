@@ -55,6 +55,7 @@ import * as v9340 from './v9340'
 import * as v9350 from './v9350'
 import * as v9370 from './v9370'
 import * as v9381 from './v9381'
+import * as v9420 from './v9420'
 
 export class BalancesTotalIssuanceStorage extends StorageBase {
     protected getPrefix() {
@@ -3408,6 +3409,21 @@ export class ReferendaReferendumInfoForStorage extends StorageBase {
         assert(this.isV9381)
         return this as any
     }
+
+    /**
+     *  Information concerning any given referendum.
+     */
+    get isV9420(): boolean {
+        return this.getTypeHash() === 'db57abeb0a45cf88aa6c6be9867481c5b3f1bf5ae1df62f2e92a729accf21c98'
+    }
+
+    /**
+     *  Information concerning any given referendum.
+     */
+    get asV9420(): ReferendaReferendumInfoForStorageV9420 {
+        assert(this.isV9420)
+        return this as any
+    }
 }
 
 /**
@@ -3476,6 +3492,23 @@ export interface ReferendaReferendumInfoForStorageV9381 {
     getPairs(key: number): Promise<[k: number, v: v9381.Type_626][]>
     getPairsPaged(pageSize: number): AsyncIterable<[k: number, v: v9381.Type_626][]>
     getPairsPaged(pageSize: number, key: number): AsyncIterable<[k: number, v: v9381.Type_626][]>
+}
+
+/**
+ *  Information concerning any given referendum.
+ */
+export interface ReferendaReferendumInfoForStorageV9420 {
+    get(key: number): Promise<(v9420.ReferendumInfo | undefined)>
+    getAll(): Promise<v9420.ReferendumInfo[]>
+    getMany(keys: number[]): Promise<(v9420.ReferendumInfo | undefined)[]>
+    getKeys(): Promise<number[]>
+    getKeys(key: number): Promise<number[]>
+    getKeysPaged(pageSize: number): AsyncIterable<number[]>
+    getKeysPaged(pageSize: number, key: number): AsyncIterable<number[]>
+    getPairs(): Promise<[k: number, v: v9420.ReferendumInfo][]>
+    getPairs(key: number): Promise<[k: number, v: v9420.ReferendumInfo][]>
+    getPairsPaged(pageSize: number): AsyncIterable<[k: number, v: v9420.ReferendumInfo][]>
+    getPairsPaged(pageSize: number, key: number): AsyncIterable<[k: number, v: v9420.ReferendumInfo][]>
 }
 
 export class SessionCurrentIndexStorage extends StorageBase {
