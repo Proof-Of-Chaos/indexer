@@ -17,7 +17,7 @@ import { Store } from '@subsquid/typeorm-store'
 import { CallItem } from '@subsquid/substrate-processor/lib/interfaces/dataSelection'
 import { TooManyOpenVotes } from './errors'
 import { IsNull } from 'typeorm'
-import { addDelegatedVotesReferendum, getAllNestedDelegations, removeDelegatedVotesReferendum, } from './helpers'
+import { addDelegatedVotesReferendum, getDelegations, removeDelegatedVotesReferendum, } from './helpers'
 import { currentValidators, setValidators } from '../../session/events/newSession'
 import { SessionValidatorsStorage } from '../../../types/storage'
 
@@ -48,8 +48,8 @@ export async function handleVote(ctx: BatchContext<Store, unknown>,
         return
     }
 
-    const nestedDelegations = await getAllNestedDelegations(ctx, wallet, openGovReferendum.track)
-    await removeDelegatedVotesReferendum(ctx, header.height, header.timestamp, index, nestedDelegations)
+    const delegations = await getDelegations(ctx, wallet, openGovReferendum.track)
+    await removeDelegatedVotesReferendum(ctx, header.height, header.timestamp, index, delegations)
 
     let decision: VoteDecisionOpenGov
     switch (vote.type) {
@@ -114,7 +114,7 @@ export async function handleVote(ctx: BatchContext<Store, unknown>,
             isValidator: voter && validators.length > 0 ? validators.includes(voter) : null
         })
     )
-    await addDelegatedVotesReferendum(ctx, wallet, header.height, header.timestamp, openGovReferendum, nestedDelegations, validators, openGovReferendum.track)
+    await addDelegatedVotesReferendum(ctx, wallet, header.height, header.timestamp, openGovReferendum, delegations, validators, openGovReferendum.track)
 }
 
 const proposalsVotes = new Map<string, number>()
