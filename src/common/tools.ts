@@ -4,6 +4,7 @@ import { Chain } from '@subsquid/substrate-processor/lib/chain'
 import { Parser } from './parser'
 import { Codec } from '@subsquid/scale-codec'
 import { decodeHex } from '@subsquid/util-internal-hex'
+import { Block } from '../processor'
 
 export const ss58codec = ss58.codec('kusama')
 
@@ -12,15 +13,15 @@ interface Call {
     value: any
 }
 
-export function parseProposalCall(chain: Chain, data: Call) {
-    const section = data.__kind as string
+export function parseProposalCall(block: Block, data: Call) {
+    const section = data.__kind
     const {__kind: method, ...args} = data.value
 
     const name = `${section}.${method}`
 
-    const description = ((chain as any).calls.get(name).docs as string[]).join('\n')
+    const description = (block._runtime.calls.get(name).docs as string[]).join('\n')
 
-    const codec = (chain as any).scaleCodec as Codec
+    // const codec = block._runtime.scaleCodec
 
     // const args = new Parser((codec as any).types).parse(chain.description.call, data)
 
