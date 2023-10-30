@@ -1,6 +1,5 @@
-import { ArrayType, SequenceType, Ti, TupleType, TypeKind, Primitive, OptionType } from '@subsquid/scale-codec'
+import { ArrayType, SequenceType, Ti, TupleType, TypeKind, Primitive, OptionType, BytesArrayType } from '@subsquid/scale-codec'
 import {
-    CodecBytesArrayType,
     CodecStructType,
     CodecType,
     CodecVariantType,
@@ -134,7 +133,7 @@ export class Parser {
         return toHex(bits)
     }
 
-    private parseBytesArray(def: CodecBytesArrayType, val: unknown): string {
+    private parseBytesArray(def: BytesArrayType, val: unknown): string {
         assert(val instanceof Uint8Array && val.length == def.len)
         return toHex(val)
     }
