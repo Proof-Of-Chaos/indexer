@@ -186,7 +186,7 @@ config file of the following structure:
   // Can be given as:
   //    1. Squid archive URL
   //    2. JSON lines file created by `squid-substrate-metadata-explorer(1)`
-  "specVersions": "https://kusama.archive.subsquid.io/graphql",
+  "specVersions": "https://v2.archive.subsquid.io/metadata/kusama",
   "events": [ // list of events to generate. To generate all events, set "events": true.
     "Balances.Transfer"
   ],
@@ -211,7 +211,7 @@ npx squid-substrate-metadata-explorer \
   
 # Download spec versions from archive
 npx squid-substrate-metadata-explorer \
-  --archive https://kusama.archive.subsquid.io/graphql \
+  --archive https://v2.archive.subsquid.io/metadata/kusama \
   --out kusamaVersions.jsonl
 ```
 
