@@ -9,26 +9,27 @@ import {
     VoteType,
     VoteDirectionOpenGov,
 } from '../../../model'
+import { ProcessorContext, Call, Block } from '../../../processor'
 import { encodeId, getOriginAccountId } from '../../../common/tools'
 import { getVoteData } from './getters'
 import { MissingOpenGovReferendumWarn } from '../../utils/errors'
-import { BatchContext, SubstrateBlock } from '@subsquid/substrate-processor'
 import { Store } from '@subsquid/typeorm-store'
-import { CallItem } from '@subsquid/substrate-processor/lib/interfaces/dataSelection'
 import { TooManyOpenVotes } from './errors'
 import { IsNull } from 'typeorm'
 import { addDelegatedVotesReferendum, getDelegations, removeDelegatedVotesReferendum, } from './helpers'
 import { currentValidators, setValidators } from '../../session/events/newSession'
-import { SessionValidatorsStorage } from '../../../types/storage'
+import assert from 'assert'
 
-export async function handleVote(ctx: BatchContext<Store, unknown>,
-    item: CallItem<'ConvictionVoting.vote', { call: { args: true; origin: true; } }>,
-    header: SubstrateBlock): Promise<void> {
-    if (!(item.call as any).success) return
+export async function handleVote(ctx: ProcessorContext<Store>,
+    call: Call,
+    header: Block): Promise<void> {
+    if (!call.success) return
 
-    const { index, vote } = getVoteData(ctx, item.call)
+    assert(header.timestamp, `Got an undefined timestamp at block ${header.height}`)
 
-    const wallet = getOriginAccountId(item.call.origin)
+    const { index, vote } = getVoteData(ctx, call)
+
+    const wallet = getOriginAccountId(call.origin)
     const votes = await ctx.store.find(ConvictionVote, { where: { voter: wallet, referendumIndex: index, blockNumberRemoved: IsNull() } })
     if (votes.length > 1) {
         //should never be the case
@@ -44,7 +45,7 @@ export async function handleVote(ctx: BatchContext<Store, unknown>,
 
     const openGovReferendum = await ctx.store.get(OpenGovReferendum, { where: { index } })
     if (!openGovReferendum) {
-        ctx.log.warn(MissingOpenGovReferendumWarn(index))
+        // ctx.log.warn(MissingOpenGovReferendumWarn(index))
         return
     }
 
@@ -62,6 +63,8 @@ export async function handleVote(ctx: BatchContext<Store, unknown>,
         case 'SplitAbstain':
             decision = VoteDecisionOpenGov.splitAbstain
             break
+        default:
+            throw new Error(`Unexpected vote type`);
     }
 
     let lockPeriod: number | undefined
@@ -95,7 +98,7 @@ export async function handleVote(ctx: BatchContext<Store, unknown>,
     }
 
     const count = await getVotesCount(ctx, openGovReferendum.id)
-    const voter = item.call.origin ? getOriginAccountId(item.call.origin) : null
+    const voter = call.origin ? getOriginAccountId(call.origin) : null
 
     const validators = currentValidators || setValidators(ctx, header)
     await ctx.store.insert(
@@ -119,8 +122,8 @@ export async function handleVote(ctx: BatchContext<Store, unknown>,
 
 const proposalsVotes = new Map<string, number>()
 
-export async function getVotesCount(ctx: BatchContext<Store, unknown>, referendumId: string) {
-    let count = proposalsVotes.get(referendumId)
+export async function getVotesCount(ctx: ProcessorContext<Store>, referendumId: string) {
+    let count = proposalsVotes.get(referendumId) || 0
     if (count == null) {
         count = await ctx.store.count(ConvictionVote, {
             where: {

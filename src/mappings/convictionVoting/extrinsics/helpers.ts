@@ -1,16 +1,17 @@
-import { BatchContext, SubstrateBlock } from "@subsquid/substrate-processor"
 import { Store } from "@subsquid/typeorm-store"
 import { IsNull } from "typeorm"
 import { ConvictionVotingDelegation, OpenGovReferendum, StandardVoteBalance, ConvictionVote, VoteType, VoteDecisionOpenGov, SplitVoteBalance, SplitAbstainVoteBalance } from "../../../model"
 import { currentValidators, setValidators } from "../../session/events/newSession"
 import { NoOpenVoteFound, TooManyOpenVotes } from "./errors"
 import { getVotesCount } from "./vote"
+import { ProcessorContext, Block } from "../../../processor"
+import { MultiAddress, MultiAddress_Address20, MultiAddress_Address32, MultiAddress_Id, MultiAddress_Raw } from "../../../types/v9320"
 
 export function convictionToLockPeriod(convictionKind: string): number {
     return convictionKind === 'None' ? 0 : Number(convictionKind[convictionKind.search(/\d/)])
 }
 
-export async function removeDelegatedVotesOngoingReferenda(ctx: BatchContext<Store, unknown>, wallet: string | undefined, block: number, blockTime: number, track: number): Promise<void> {
+export async function removeDelegatedVotesOngoingReferenda(ctx: ProcessorContext<Store>, wallet: string | undefined, block: number, blockTime: number, track: number): Promise<void> {
     //get any ongoing referenda in this track
     const ongoingReferenda = await ctx.store.find(OpenGovReferendum, { where: { endedAt: IsNull(), track } })
     let delegations = await getDelegations(ctx, wallet, track)
@@ -20,7 +21,7 @@ export async function removeDelegatedVotesOngoingReferenda(ctx: BatchContext<Sto
     }
 }
 
-export async function removeDelegatedVotesReferendum(ctx: BatchContext<Store, unknown>, block: number, blockTime: number, index: number, nestedDelegations: ConvictionVotingDelegation[]): Promise<void> {
+export async function removeDelegatedVotesReferendum(ctx: ProcessorContext<Store>, block: number, blockTime: number, index: number, nestedDelegations: ConvictionVotingDelegation[]): Promise<void> {
     for (let i = 0; i < nestedDelegations.length; i++) {
         //remove active votes
         const delegation = nestedDelegations[i]
@@ -42,7 +43,7 @@ export async function removeDelegatedVotesReferendum(ctx: BatchContext<Store, un
     }
 }
 
-export async function removeVote(ctx: BatchContext<Store, unknown>, wallet: string | undefined, referendumIndex: number, block: number, blockTime: number, shouldHaveVote: boolean, type?: VoteType, delegatedTo?: string): Promise<void> {
+export async function removeVote(ctx: ProcessorContext<Store>, wallet: string | undefined, referendumIndex: number, block: number, blockTime: number, shouldHaveVote: boolean, type?: VoteType, delegatedTo?: string): Promise<void> {
     const votes = await ctx.store.find(ConvictionVote, { where: { voter: wallet, referendumIndex, blockNumberRemoved: IsNull(), type, delegatedTo } })
     if (votes.length > 1) {
         ctx.log.warn(TooManyOpenVotes(block, referendumIndex, wallet))
@@ -61,17 +62,17 @@ export async function removeVote(ctx: BatchContext<Store, unknown>, wallet: stri
     await ctx.store.save(vote)
 }
 
-export async function addOngoingReferendaDelegatedVotes(ctx: BatchContext<Store, unknown>, toWallet: string | undefined, header: SubstrateBlock, track: number): Promise<void> {
+export async function addOngoingReferendaDelegatedVotes(ctx: ProcessorContext<Store>, toWallet: string | undefined, header: Block, track: number): Promise<void> {
     const ongoingReferenda = await ctx.store.find(OpenGovReferendum, { where: { endedAt: IsNull(), track } })
     const delegations = await getDelegations(ctx, toWallet, track)
     const validators = currentValidators || setValidators(ctx, header)
     for (let i = 0; i < ongoingReferenda.length; i++) {
         const ongoingReferendum = ongoingReferenda[i]
-        await addDelegatedVotesReferendum(ctx, toWallet, header.height, header.timestamp, ongoingReferendum, delegations, validators, track)
+        await addDelegatedVotesReferendum(ctx, toWallet, header.height, header.timestamp || 0, ongoingReferendum, delegations, validators, track)
     }
 }
 
-export async function addDelegatedVotesReferendum(ctx: BatchContext<Store, unknown>, toWallet: string | undefined, block: number, blockTime: number, referendum: OpenGovReferendum, delegations: ConvictionVotingDelegation[], validators: string[], track: number): Promise<void> {
+export async function addDelegatedVotesReferendum(ctx: ProcessorContext<Store>, toWallet: string | undefined, block: number, blockTime: number, referendum: OpenGovReferendum, delegations: ConvictionVotingDelegation[], validators: string[], track: number): Promise<void> {
     //get top toWallet vote
     const votes = await ctx.store.find(ConvictionVote, { where: { voter: toWallet, referendumIndex: referendum.index, blockNumberRemoved: IsNull() } })
     if (votes.length > 1) {
@@ -173,7 +174,7 @@ export async function addDelegatedVotesReferendum(ctx: BatchContext<Store, unkno
 }
 
 
-export async function getDelegations(ctx: BatchContext<Store, unknown>, voter: string | undefined, track: number): Promise<any> {
+export async function getDelegations(ctx: ProcessorContext<Store>, voter: string | undefined, track: number): Promise<any> {
     let delegations = await ctx.store.find(ConvictionVotingDelegation, { where: { to: voter, blockNumberEnd: IsNull(), track } })
     if (delegations && delegations.length > 0) {
         return delegations
@@ -181,6 +182,10 @@ export async function getDelegations(ctx: BatchContext<Store, unknown>, voter: s
     else {
         return []
     }
+}
+
+export function isValueAddress(address: MultiAddress): address is MultiAddress_Address20 | MultiAddress_Address32 | MultiAddress_Id | MultiAddress_Raw {
+    return address.__kind === 'Address20' || address.__kind === 'Address32' || address.__kind === 'Id' || address.__kind === 'Raw';
 }
 
 

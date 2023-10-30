@@ -1,4 +1,3 @@
-import { BatchContext, SubstrateBlock } from '@subsquid/substrate-processor'
 import { Store } from '@subsquid/typeorm-store'
 import {
     Preimage,
@@ -11,12 +10,16 @@ import {
     ReferendumStatusHistory,
     OpenGovReferendumStatusHistory
 } from '../../model'
-import { BalancesTotalIssuanceStorage } from '../../types/storage'
 import { MissingPreimageWarn, MissingReferendumWarn } from './errors'
 import { toJSON } from '@subsquid/util-internal-json'
 import { ss58codec } from '../../common/tools'
+import { Block, ProcessorContext } from '../../processor'
+import { storage } from '../../types'
+import assert from 'assert'
 
-export async function updateReferendum(ctx: BatchContext<Store, unknown>, index: number, status: ReferendumStatus, header: SubstrateBlock, totalIssuance?: string) {
+export async function updateReferendum(ctx: ProcessorContext<Store>, index: number, status: ReferendumStatus, header: Block, totalIssuance?: string) {
+    assert(header.timestamp, `Got an undefined timestamp at block ${header.height}`)
+
     const referendum = await ctx.store.get(Referendum, {
         where: {
             index,
@@ -34,7 +37,7 @@ export async function updateReferendum(ctx: BatchContext<Store, unknown>, index:
     referendum.updatedAt = new Date(header.timestamp)
     referendum.updatedAtBlock = header.height
     referendum.status = status
-    referendum.totalIssuance = await new BalancesTotalIssuanceStorage(ctx, header).asV1020.get() || 0n
+    referendum.totalIssuance = await storage.balances.totalIssuance.v1020.get(header) || 0n
 
     switch (status) {
         case ReferendumStatus.Passed:
@@ -56,7 +59,8 @@ export async function updateReferendum(ctx: BatchContext<Store, unknown>, index:
     await ctx.store.save(referendum)
 }
 
-export async function updateOpenGovReferendum(ctx: BatchContext<Store, unknown>, index: number, status: OpenGovReferendumStatus, header: SubstrateBlock, storageData?: any, decodedCall?: any) {
+export async function updateOpenGovReferendum(ctx: ProcessorContext<Store>, index: number, status: OpenGovReferendumStatus, header: Block, storageData?: any, decodedCall?: any) {
+    assert(header.timestamp, `Got an undefined timestamp at block ${header.height}`)
     const referendum = await ctx.store.get(OpenGovReferendum, {
         where: {
             index,
@@ -75,7 +79,7 @@ export async function updateOpenGovReferendum(ctx: BatchContext<Store, unknown>,
     referendum.updatedAtBlock = header.height
     referendum.status = status
     referendum.len = storageData.len
-    referendum.totalIssuance = await new BalancesTotalIssuanceStorage(ctx, header).asV1020.get() || 0n
+    referendum.totalIssuance = await storage.balances.totalIssuance.v1020.get(header) || 0n
     referendum.ayes = storageData.ayes ? storageData.ayes : referendum.ayes 
     referendum.nays = storageData.nays ? storageData.nays : referendum.nays 
     referendum.support = storageData.support ? storageData.support : referendum.support
@@ -114,7 +118,8 @@ export async function updateOpenGovReferendum(ctx: BatchContext<Store, unknown>,
     await ctx.store.save(referendum)
 }
 
-export async function updatePreimage(ctx: BatchContext<Store, unknown>, hash: string, status: PreimageStatus, block: SubstrateBlock) {
+export async function updatePreimage(ctx: ProcessorContext<Store>, hash: string, status: PreimageStatus, header: Block) {
+    assert(header.timestamp, `Got an undefined timestamp at block ${header.height}`)
     const preimage = await ctx.store.get(Preimage, {
         where: {
             hash,
@@ -129,8 +134,8 @@ export async function updatePreimage(ctx: BatchContext<Store, unknown>, hash: st
         return
     }
 
-    preimage.updatedAt = new Date(block.timestamp)
-    preimage.updatedAtBlock = block.height
+    preimage.updatedAt = new Date(header.timestamp)
+    preimage.updatedAtBlock = header.height
     preimage.status = status
 
     preimage.statusHistory.push(

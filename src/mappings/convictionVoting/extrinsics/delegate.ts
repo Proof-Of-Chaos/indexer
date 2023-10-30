@@ -1,29 +1,39 @@
 import { encodeId, getOriginAccountId, ss58codec } from '../../../common/tools'
 import { getDelegateData } from './getters'
-import { BatchContext, SubstrateBlock } from '@subsquid/substrate-processor'
+import { BlockHeader, DataHandlerContext, FieldSelection, decodeHex } from '@subsquid/substrate-processor'
 import { Store } from '@subsquid/typeorm-store'
-import { CallItem } from '@subsquid/substrate-processor/lib/interfaces/dataSelection'
-import { TooManyOpenDelegations, TooManyOpenVotes } from './errors'
+import { NoValueOnMultiAddress, TooManyOpenDelegations, TooManyOpenVotes } from './errors'
 import { IsNull } from 'typeorm'
-import { addOngoingReferendaDelegatedVotes, removeDelegatedVotesOngoingReferenda, removeVote } from './helpers'
+import { addOngoingReferendaDelegatedVotes, isValueAddress, removeDelegatedVotesOngoingReferenda, removeVote } from './helpers'
 import { OpenGovReferendum, StandardVoteBalance, ConvictionVote, VoteType, ConvictionVotingDelegation } from '../../../model'
 import { getVotesCount } from './vote'
-import { currentCouncilMembers, setCouncilMembers } from '../../election/events/newTerm'
 import { currentValidators, setValidators } from '../../session/events/newSession'
-import { CouncilMembersStorage, SessionValidatorsStorage } from '../../../types/storage'
+import assert from 'assert'
+import { ProcessorContext, Call, Block } from '../../../processor'
+import * as ss58 from '@subsquid/ss58'
 
-export async function handleDelegate(ctx: BatchContext<Store, unknown>,
-    item: CallItem<'ConvictionVoting.delegate', { call: { args: true; origin: true; } }>,
-    header: SubstrateBlock): Promise<void> {
-    if (!(item.call as any).success) return
-    const { to, lockPeriod, balance, track } = getDelegateData(ctx, item.call)
-    const toWallet = ss58codec.encode(to)
-    const wallet = getOriginAccountId(item.call.origin)
+export async function handleDelegate(ctx: ProcessorContext<Store>,
+    call: Call,
+    header: Block): Promise<void> {
+    assert(header.timestamp, `Got an undefined timestamp at block ${header.height}`)
+
+    if (!call.success) return
+    const { to, lockPeriod, balance, track } = getDelegateData(ctx, call)
+
+    let toWallet;
+    // Usage:
+    if (isValueAddress(to)) {
+        toWallet = ss58.codec('kusama').encode(decodeHex(to.value));
+    } else {
+        // Handle the case where to is a MultiAddress_Index, or add additional logic as needed.
+        ctx.log.warn(NoValueOnMultiAddress(call.block.height, track, to.__kind))
+    }
+    const wallet = getOriginAccountId(call.origin)
     const delegations = await ctx.store.find(ConvictionVotingDelegation, { where: { wallet, blockNumberEnd: IsNull(), track } })
 
     if (delegations.length > 1) {
         //should never be the case
-        ctx.log.warn(TooManyOpenDelegations(header.height, track, wallet))
+        ctx.log.warn(TooManyOpenDelegations(call.block.height, track, wallet))
     }
     //get ongoingReferenda for track
     const ongoingReferenda = await ctx.store.find(OpenGovReferendum, { where: { endedAt: IsNull(), track } })
@@ -45,7 +55,7 @@ export async function handleDelegate(ctx: BatchContext<Store, unknown>,
         new ConvictionVotingDelegation({
             id: `${await ctx.store.count(ConvictionVotingDelegation)}`,
             blockNumberStart: header.height,
-            wallet: getOriginAccountId(item.call.origin),
+            wallet: getOriginAccountId(call.origin),
             to: toWallet,
             balance,
             lockPeriod,
@@ -70,7 +80,7 @@ export async function handleDelegate(ctx: BatchContext<Store, unknown>,
         const voteBalance = new StandardVoteBalance({
             value: balance,
         })
-        const voter = item.call.origin ? getOriginAccountId(item.call.origin) : null
+        const voter = call.origin ? getOriginAccountId(call.origin) : null
         const count = await getVotesCount(ctx, referendum.id)
         const validators = currentValidators || setValidators(ctx, header)
         await ctx.store.insert(

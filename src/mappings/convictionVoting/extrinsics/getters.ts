@@ -1,15 +1,12 @@
-import { BatchContext } from '@subsquid/substrate-processor'
 import { Store } from '@subsquid/typeorm-store'
 import { UnknownVersionError } from '../../../common/errors'
-import {
-    ConvictionVotingVoteCall,
-    ConvictionVotingDelegateCall,
-    ConvictionVotingUndelegateCall,
-    ConvictionVotingRemoveVoteCall,
-    ConvictionVotingRemoveOtherVoteCall
-} from '../../../types/calls'
-import { Event } from '../../../types/support'
-import { convictionToLockPeriod } from './helpers'
+import { convictionToLockPeriod, isValueAddress } from './helpers'
+import { ProcessorContext, Call } from '../../../processor'
+import { calls, events } from '../../../types'
+import { MultiAddress } from '../../../types/v9320'
+import { decodeHex } from '@subsquid/substrate-processor'
+import * as ss58 from '@subsquid/ss58'
+import { NoValueOnMultiAddress } from './errors'
 
 type DemocracyVote =
     | {
@@ -29,16 +26,16 @@ type DemocracyVote =
         nay: bigint
     }
 
-interface DemocracyVoteCallData {
+interface ConvictionVotingVoteCallData {
     index: number
     vote: DemocracyVote
 }
 
-export function getVoteData(ctx: BatchContext<Store, unknown>, itemCall: any): DemocracyVoteCallData {
-    const event = new ConvictionVotingVoteCall(ctx, itemCall)
+export function getVoteData(ctx: ProcessorContext<Store>, itemCall: Call): ConvictionVotingVoteCallData {
+    const event = calls.convictionVoting.vote
 
-    if (event.isV9320) {
-        const { pollIndex, vote } = event.asV9320
+    if (event.v9320.is(itemCall)) {
+        const { pollIndex, vote } = event.v9320.decode(itemCall)
         if (vote.__kind === 'Standard') {
             return {
                 index: pollIndex,
@@ -59,8 +56,8 @@ export function getVoteData(ctx: BatchContext<Store, unknown>, itemCall: any): D
             }
         }
     }
-    else if (event.isV9340) {
-        const { pollIndex, vote } = event.asV9340
+    else if (event.v9340.is(itemCall)) {
+        const { pollIndex, vote } = event.v9340.decode(itemCall)
         if (vote.__kind === 'Standard') {
             return {
                 index: pollIndex,
@@ -100,20 +97,20 @@ export function getVoteData(ctx: BatchContext<Store, unknown>, itemCall: any): D
 
 export interface ConvictionVoteDelegateCallData {
     track: number
-    to: any
+    to: MultiAddress
     lockPeriod: number
     balance?: bigint
 }
 
-export function getDelegateData(ctx: BatchContext<Store, unknown>, itemCall: any): ConvictionVoteDelegateCallData {
-    const event = new ConvictionVotingDelegateCall(ctx, itemCall)
+export function getDelegateData(ctx: ProcessorContext<Store>, itemCall: Call): ConvictionVoteDelegateCallData {
+    const event = calls.convictionVoting.delegate
    
-    if (event.isV9320) {
+    if (event.v9320.is(itemCall)) {
         //{ class, to, conviction, balance}
-        const eventData = event.asV9320
+        const eventData = event.v9320.decode(itemCall)
         return {
             track: eventData.class,
-            to: eventData.to.value,
+            to: eventData.to,
             lockPeriod: convictionToLockPeriod(eventData.conviction.__kind),
             balance: eventData.balance
         }
@@ -126,11 +123,11 @@ export interface ConvictionVoteUndelegateCallData {
     track: number
 }
 
-export function getUndelegateData(ctx: BatchContext<Store, unknown>, itemCall: any): ConvictionVoteUndelegateCallData {
-    const event = new ConvictionVotingUndelegateCall(ctx, itemCall)
+export function getUndelegateData(ctx: ProcessorContext<Store>, itemCall: any): ConvictionVoteUndelegateCallData {
+    const event = calls.convictionVoting.undelegate
    
-    if (event.isV9320) {
-        const eventData = event.asV9320
+    if (event.v9320.is(itemCall)) {
+        const eventData = event.v9320.decode(itemCall)
         return {
             track: eventData.class
         }
@@ -144,10 +141,10 @@ export interface ConvictionVotingRemoveVoteCallData {
     track: number | undefined
 }
 
-export function getRemoveVoteData(ctx: BatchContext<Store, unknown>, itemCall: any): ConvictionVotingRemoveVoteCallData {
-    const event = new ConvictionVotingRemoveVoteCall(ctx, itemCall)
-    if (event.isV9320) {
-        const eventData = event.asV9320
+export function getRemoveVoteData(ctx: ProcessorContext<Store>, itemCall: any): ConvictionVotingRemoveVoteCallData {
+    const event = calls.convictionVoting.removeVote
+    if (event.v9320.is(itemCall)) {
+        const eventData = event.v9320.decode(itemCall)
         return {
             index: eventData.index,
             track: eventData.class
@@ -160,17 +157,24 @@ export function getRemoveVoteData(ctx: BatchContext<Store, unknown>, itemCall: a
 export interface ConvictionVotingRemoveOtherVoteCallData {
     index: number
     track: number | undefined
-    target: Uint8Array | null
+    target: string | undefined
 }
 
-export function getRemoveOtherVoteData(ctx: BatchContext<Store, unknown>, itemCall: any): ConvictionVotingRemoveOtherVoteCallData {
-    const event = new ConvictionVotingRemoveOtherVoteCall(ctx, itemCall)
-    if (event.isV9320) {
-        const eventData = event.asV9320
+export function getRemoveOtherVoteData(ctx: ProcessorContext<Store>, itemCall: any): ConvictionVotingRemoveOtherVoteCallData {
+    const event = calls.convictionVoting.removeOtherVote
+    if (event.v9320.is(itemCall)) {
+        const eventData = event.v9320.decode(itemCall)
+        let target;
+        if (isValueAddress(eventData.target)) {
+            target = ss58.codec('kusama').encode(decodeHex(eventData.target.value));
+        } else {
+            // Handle the case where to is a MultiAddress_Index, or add additional logic as needed.
+            ctx.log.warn(NoValueOnMultiAddress(itemCall.block.height, eventData.class, eventData.target.__kind))
+        }
         return {
             index: eventData.index,
             track: eventData.class,
-            target: eventData.target.value
+            target: target
         }
     } else {
         throw new UnknownVersionError(event.constructor.name)

@@ -1,5 +1,6 @@
 import { UnknownVersionError } from '../../common/errors'
-import { ReferendaReferendumInfoForStorage } from '../../types/storage'
+import { Block, ProcessorContext } from '../../processor'
+import { storage } from '../../types'
 import * as v1055 from '../../types/v1055'
 import * as v9111 from '../../types/v9111'
 import * as v9320 from '../../types/v9320'
@@ -7,7 +8,6 @@ import * as v9350 from '../../types/v9350'
 import * as v9370 from '../../types/v9370'
 import * as v9381 from '../../types/v9381'
 import * as v9420 from '../../types/v9420'
-import { BatchContext, SubstrateBlock } from '@subsquid/substrate-processor'
 import { Store } from '@subsquid/typeorm-store'
 
 type OpenGovFinishedReferendumData = {
@@ -23,12 +23,12 @@ type OpenGovOngoingReferendumData = {
     // originValue: undefined
     enactmentKind: string
     enactmentValue: number
-    hash: Uint8Array
+    hash: string
     len: number | undefined
     submitted: number
-    submissionDepositWho: Uint8Array
+    submissionDepositWho: string
     submissionDepositAmount: bigint
-    decisionDepositWho: Uint8Array | undefined
+    decisionDepositWho: string | undefined
     decisionDepositAmount: bigint | undefined
     decidingSince: number | undefined
     decidingConfirming: number | undefined
@@ -41,10 +41,10 @@ type OpenGovOngoingReferendumData = {
 
 type OpenGovReferendumStorageData = OpenGovFinishedReferendumData | OpenGovOngoingReferendumData
 
-async function getStorageData(ctx: BatchContext<Store, unknown>, index: number, block: SubstrateBlock): Promise<OpenGovReferendumStorageData | undefined> {
-    const storage = new ReferendaReferendumInfoForStorage(ctx, block)
-    if (storage.isV9320) {
-        const storageData = await storage.asV9320.get(index)
+async function getStorageData(ctx: ProcessorContext<Store>, index: number, block: Block): Promise<OpenGovReferendumStorageData | undefined> {
+    const storageItem = storage.referenda.referendumInfoFor
+    if (storageItem.v9320.is(block)) {
+        const storageData = await storageItem.v9320.get(block, index)
         if (!storageData) return undefined
 
         const { __kind: status } = storageData
@@ -131,8 +131,8 @@ async function getStorageData(ctx: BatchContext<Store, unknown>, index: number, 
             }
         }
     }
-    else if (storage.isV9350) {
-        const storageData = await storage.asV9350.get(index)
+    else if (storageItem.v9350.is(block)) {
+        const storageData = await storageItem.v9350.get(block, index)
         if (!storageData) return undefined
 
         const { __kind: status } = storageData
@@ -219,8 +219,8 @@ async function getStorageData(ctx: BatchContext<Store, unknown>, index: number, 
             }
         }
     }
-    else if (storage.isV9370) {
-        const storageData = await storage.asV9370.get(index)
+    else if (storageItem.v9370.is(block)) {
+        const storageData = await storageItem.v9370.get(block, index)
         if (!storageData) return undefined
 
         const { __kind: status } = storageData
@@ -307,8 +307,8 @@ async function getStorageData(ctx: BatchContext<Store, unknown>, index: number, 
             }
         }
     }
-    else if (storage.isV9381) {
-        const storageData = await storage.asV9381.get(index)
+    else if (storageItem.v9381.is(block)) {
+        const storageData = await storageItem.v9381.get(block, index)
         if (!storageData) return undefined
 
         const { __kind: status } = storageData
@@ -395,8 +395,8 @@ async function getStorageData(ctx: BatchContext<Store, unknown>, index: number, 
             }
         }
     }
-    else if (storage.isV9420) {
-        const storageData = await storage.asV9420.get(index)
+    else if (storageItem.v9420.is(block)) {
+        const storageData = await storageItem.v9420.get(block, index)
         if (!storageData) return undefined
 
         const { __kind: status } = storageData
@@ -488,6 +488,6 @@ async function getStorageData(ctx: BatchContext<Store, unknown>, index: number, 
     }
 }
 
-export async function getReferendumInfoOf(ctx: BatchContext<Store, unknown>, index: number, block: SubstrateBlock) {
+export async function getReferendumInfoOf(ctx: ProcessorContext<Store>, index: number, block: Block) {
     return await getStorageData(ctx, index, block)
 }

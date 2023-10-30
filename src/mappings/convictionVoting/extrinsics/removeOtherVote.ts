@@ -1,19 +1,20 @@
 import { OpenGovReferendum, ConvictionVote } from '../../../model'
 import { ss58codec } from '../../../common/tools'
 import { getRemoveOtherVoteData } from './getters'
-import { BatchContext, SubstrateBlock } from '@subsquid/substrate-processor'
 import { Store } from '@subsquid/typeorm-store'
-import { CallItem } from '@subsquid/substrate-processor/lib/interfaces/dataSelection'
 import { IsNull } from 'typeorm'
 import { NoOpenVoteFound, TooManyOpenVotes } from './errors'
 import { MissingReferendumWarn } from '../../utils/errors'
 import { getDelegations, removeDelegatedVotesReferendum } from './helpers'
+import { ProcessorContext, Call, Block } from '../../../processor'
+import assert from 'assert'
 
-export async function handleRemoveOtherVote(ctx: BatchContext<Store, unknown>,
-    item: CallItem<'ConvictionVoting.remove_other_vote', { call: { args: true; origin: true; } }>,
-    header: SubstrateBlock): Promise<void> {
-    if (!(item.call as any).success) return
-    const { target, index } = getRemoveOtherVoteData(ctx, item.call)
+export async function handleRemoveOtherVote(ctx: ProcessorContext<Store>,
+    item: Call,
+    header: Block): Promise<void> {
+    if (!item.success) return
+    assert(header.timestamp, `Got an undefined timestamp at block ${header.height}`)
+    const { target, index } = getRemoveOtherVoteData(ctx, item)
     const referendum = await ctx.store.get(OpenGovReferendum, { where: { index } })
     if (!referendum) {
         ctx.log.warn(MissingReferendumWarn(index))

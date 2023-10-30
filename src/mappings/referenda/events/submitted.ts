@@ -1,5 +1,4 @@
 import { getSubmittedData } from './getters'
-import { BatchContext, SubstrateBlock, toHex } from '@subsquid/substrate-processor'
 import {
     OpenGovReferendum,
     OpenGovReferendumStatus,
@@ -7,16 +6,19 @@ import {
 } from '../../../model'
 import { Store } from '@subsquid/typeorm-store'
 import { getReferendumInfoOf } from '../../../storage/referenda'
-import { BalancesTotalIssuanceStorage } from '../../../types/storage'
-import { EventItem } from '@subsquid/substrate-processor/lib/interfaces/dataSelection'
 import { ss58codec } from '../../../common/tools'
 import { toJSON } from '@subsquid/util-internal-json'
 import { getPreimageProposalCall } from '../../utils/preimages'
+import { Block, Event, ProcessorContext } from '../../../processor'
+import assert from 'assert'
+import { storage } from '../../../types'
 
-export async function handleSubmitted(ctx: BatchContext<Store, unknown>,
-    item: EventItem<'Referenda.Submitted', { event: { args: true; extrinsic: { hash: true } } }>,
-    header: SubstrateBlock): Promise<void> {
-    const { index, track, hash, len } = getSubmittedData(ctx, item.event)
+export async function handleSubmitted(ctx: ProcessorContext<Store>,
+    item: Event,
+    header: Block): Promise<void> {
+    assert(header.timestamp, `Got an undefined timestamp at block ${header.height}`)
+
+    const { index, track, hash, len } = getSubmittedData(ctx, item)
     // get referenda data
     const storageData = await getReferendumInfoOf(ctx, index, header)
     if (!storageData) {
@@ -67,7 +69,7 @@ export async function handleSubmitted(ctx: BatchContext<Store, unknown>,
     }
     const id = await getReferendumId(ctx.store)
     const decodedCall = await getPreimageProposalCall(ctx, hash, len, header)
-    
+
     const referendum = new OpenGovReferendum({
         id,
         index,
@@ -76,7 +78,7 @@ export async function handleSubmitted(ctx: BatchContext<Store, unknown>,
         originKind,
         enactmentKind,
         enactmentValue,
-        hash: toHex(hash),
+        hash: hash,
         len,
         submitted,
         submissionDepositAmount,
@@ -93,7 +95,7 @@ export async function handleSubmitted(ctx: BatchContext<Store, unknown>,
         statusHistory: [],
         createdAtBlock: header.height,
         createdAt: new Date(header.timestamp),
-        totalIssuance: await new BalancesTotalIssuanceStorage(ctx, header).asV1020.get() || 0n,
+        totalIssuance:  await storage.balances.totalIssuance.v1020.get(header) || 0n,
         preimageSection: decodedCall?.section,
         preimageMethod: decodedCall?.method,
         preimageDescription: decodedCall?.description,

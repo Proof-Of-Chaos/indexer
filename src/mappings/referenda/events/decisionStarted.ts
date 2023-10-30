@@ -1,24 +1,19 @@
-import { BatchContext, SubstrateBlock } from '@subsquid/substrate-processor'
 import {
     OpenGovReferendumStatus,
 } from '../../../model'
 import { Store } from '@subsquid/typeorm-store'
 import { getDecisionStartedData } from './getters'
 import { getReferendumInfoOf } from '../../../storage/referenda'
-import { EventItem } from '@subsquid/substrate-processor/lib/interfaces/dataSelection'
 import { Chain } from '@subsquid/substrate-processor/lib/chain'
 import { updateOpenGovReferendum } from '../../utils/proposals'
 import { getPreimageProposalCall } from '../../utils/preimages'
+import { Block, Event, ProcessorContext } from '../../../processor'
 
-function decodeProposal(chain: Chain, data: Uint8Array) {
-    // @ts-ignore
-    return chain.scaleCodec.decodeBinary(chain.description.call, data)
-}
 
-export async function handleDecisionStarted(ctx: BatchContext<Store, unknown>,
-    item: EventItem<'Referenda.DecisionStarted', { event: { args: true; extrinsic: { hash: true } } }>,
-    header: SubstrateBlock): Promise<void> {
-    let { index, track, hash, ayes, nays, support } = getDecisionStartedData(ctx, item.event)
+export async function handleDecisionStarted(ctx: ProcessorContext<Store>,
+    event: Event,
+    header: Block): Promise<void> {
+    let { index, track, hash, ayes, nays, support } = getDecisionStartedData(ctx, event)
     // get referenda data
     const storageData = await getReferendumInfoOf(ctx, index, header)
     if (!storageData) {

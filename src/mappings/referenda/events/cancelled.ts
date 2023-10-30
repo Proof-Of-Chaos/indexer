@@ -1,15 +1,14 @@
-import { BatchContext, SubstrateBlock } from '@subsquid/substrate-processor'
-import { EventItem } from '@subsquid/substrate-processor/lib/interfaces/dataSelection'
 import { Store } from '@subsquid/typeorm-store'
 import { OpenGovReferendumStatus } from '../../../model'
 import { getReferendumInfoOf } from '../../../storage/referenda/referendumInfoOf'
 import { updateOpenGovReferendum } from '../../utils/proposals'
 import { getCancelledData } from './getters'
+import { Block, Event, ProcessorContext } from '../../../processor'
 
-export async function handleCancelled(ctx: BatchContext<Store, unknown>,
-    item: EventItem<'Referenda.Cancelled', { event: { args: true; extrinsic: { hash: true } } }>,
-    header: SubstrateBlock): Promise<void> {
-    const { index, ayes, nays, support } = getCancelledData(ctx, item.event)
+export async function handleCancelled(ctx: ProcessorContext<Store>,
+    item: Event,
+    header: Block): Promise<void> {
+    const { index, ayes, nays, support } = getCancelledData(ctx, item)
     // get referenda data
     const storageData = await getReferendumInfoOf(ctx, index, header)
     if (!storageData) {

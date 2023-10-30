@@ -13,3 +13,7 @@ export function TooManyOpenVotes(block: number, index: number,  wallet?: string)
 export function NoOpenVoteFound(block: number, index: number, wallet?: string) {
     return `No active vote found for referendum ${index} and wallet ${wallet} at block ${block}`
 }
+
+export function NoValueOnMultiAddress(block: number, track: number, address: string) {
+    return `No value found on MultiAddress ${address} for delegation to track ${track} at block ${block}`
+}

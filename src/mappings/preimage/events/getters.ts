@@ -1,19 +1,16 @@
-import { BatchContext } from '@subsquid/substrate-processor'
 import { Store } from '@subsquid/typeorm-store'
 import { UnknownVersionError } from '../../../common/errors'
-import {
-    PreimageNotedEvent,
-} from '../../../types/events'
-import { Event } from '../../../types/support'
+import { ProcessorContext, Event } from '../../../processor'
+import { events } from '../../../types'
 
 interface PreimageNotedData {
-    hash: Uint8Array
+    hash: string
 }
 
-export function getPreimageNotedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): PreimageNotedData {
-    const event = new PreimageNotedEvent(ctx, itemEvent)
-    if (event.isV9160) {
-        const {hash} = event.asV9160
+export function getPreimageNotedData(ctx: ProcessorContext<Store>, itemEvent: Event): PreimageNotedData {
+    const event = events.preimage.noted
+    if (event.v9160.is(itemEvent)) {
+        const {hash} = event.v9160.decode(itemEvent)
         return {
             hash
         }

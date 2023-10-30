@@ -1,26 +1,7 @@
-import { BatchContext } from '@subsquid/substrate-processor'
 import { Store } from '@subsquid/typeorm-store'
 import { UnknownVersionError } from '../../../common/errors'
-import {
-    ReferendaCancelledEvent,
-    DemocracyExecutedEvent,
-    ReferendaRejectedEvent,
-    ReferendaApprovedEvent,
-    DemocracyPreimageInvalidEvent,
-    DemocracyPreimageMissingEvent,
-    DemocracyPreimageNotedEvent,
-    DemocracyPreimageReapedEvent,
-    DemocracyPreimageUsedEvent,
-    ReferendaSubmittedEvent,
-    ReferendaDecisionStartedEvent,
-    DemocracyTabledEvent,
-    ReferendaConfirmedEvent,
-    ReferendaTimedOutEvent,
-    ReferendaKilledEvent,
-    ReferendaConfirmStartedEvent,
-    ReferendaConfirmAbortedEvent,
-} from '../../../types/events'
-import { Event } from '../../../types/support'
+import { ProcessorContext, Event } from '../../../processor'
+import { events } from '../../../types'
 
 export interface CancelledData {
     index: number
@@ -29,10 +10,11 @@ export interface CancelledData {
     support: bigint
 }
 
-export function getCancelledData(ctx: BatchContext<Store, unknown>, itemEvent: Event): CancelledData {
-    const event = new ReferendaCancelledEvent(ctx, itemEvent)
-    if (event.isV9320) {
-        const { index, tally } = event.asV9320
+export function getCancelledData(ctx: ProcessorContext<Store>, itemEvent: Event): CancelledData {
+    const event = events.referenda.cancelled
+
+    if (event.v9320.is(itemEvent)) {
+        const { index, tally } = event.v9320.decode(itemEvent)
         return {
             index,
             ayes: tally.ayes,
@@ -51,10 +33,11 @@ export interface ConfirmedData {
     support: bigint
 }
 
-export function getConfirmedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): ConfirmedData {
-    const event = new ReferendaConfirmedEvent(ctx, itemEvent)
-    if (event.isV9320) {
-        const { index, tally } = event.asV9320
+export function getConfirmedData(ctx: ProcessorContext<Store>, itemEvent: Event): ConfirmedData {
+    const event = events.referenda.confirmed
+
+    if (event.v9320.is(itemEvent)) {
+        const { index, tally } = event.v9320.decode(itemEvent)
         return {
             index,
             ayes: tally.ayes,
@@ -66,19 +49,19 @@ export function getConfirmedData(ctx: BatchContext<Store, unknown>, itemEvent: E
     }
 }
 
-export function getExecutedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): number {
-    const event = new DemocracyExecutedEvent(ctx, itemEvent)
-    if (event.isV1020) {
-        return event.asV1020[0]
-    } else if (event.isV9090) {
-        return event.asV9090[0]
-    } else if (event.isV9111) {
-        return event.asV9111[0]
-    } else {
-        const data = ctx._chain.decodeEvent(itemEvent)
-        return data.refIndex
-    }
-}
+// export function getExecutedData(ctx: ProcessorContext<Store>, itemEvent: Event): number {
+//     const event = new DemocracyExecutedEvent(ctx, itemEvent)
+//     if (event.isV1020) {
+//         return event.asV1020[0]
+//     } else if (event.isV9090) {
+//         return event.asV9090[0]
+//     } else if (event.isV9111) {
+//         return event.asV9111[0]
+//     } else {
+//         const data = ctx._chain.decodeEvent(itemEvent)
+//         return data.refIndex
+//     }
+// }
 
 export interface RejectedData {
     index: number
@@ -87,10 +70,10 @@ export interface RejectedData {
     support: bigint
 }
 
-export function getRejectedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): RejectedData {
-    const event = new ReferendaRejectedEvent(ctx, itemEvent)
-    if (event.isV9320) {
-        const { index, tally } = event.asV9320
+export function getRejectedData(ctx: ProcessorContext<Store>, itemEvent: Event): RejectedData {
+    const event = events.referenda.rejected
+    if (event.v9320.is(itemEvent)) {
+        const { index, tally } = event.v9320.decode(itemEvent)
         return {
             index,
             ayes: tally.ayes,
@@ -109,10 +92,11 @@ export interface TimedOutData {
     support: bigint
 }
 
-export function getTimedOutData(ctx: BatchContext<Store, unknown>, itemEvent: Event): TimedOutData {
-    const event = new ReferendaTimedOutEvent(ctx, itemEvent)
-    if (event.isV9320) {
-        const { index, tally } = event.asV9320
+export function getTimedOutData(ctx: ProcessorContext<Store>, itemEvent: Event): TimedOutData {
+    const event = events.referenda.timedOut
+
+    if (event.v9320.is(itemEvent)) {
+        const { index, tally } = event.v9320.decode(itemEvent)
         return {
             index,
             ayes: tally.ayes,
@@ -131,10 +115,10 @@ export interface KilledData {
     support: bigint
 }
 
-export function getKilledData(ctx: BatchContext<Store, unknown>, itemEvent: Event): KilledData {
-    const event = new ReferendaKilledEvent(ctx, itemEvent)
-    if (event.isV9320) {
-        const { index, tally } = event.asV9320
+export function getKilledData(ctx: ProcessorContext<Store>, itemEvent: Event): KilledData {
+    const event = events.referenda.killed
+    if (event.v9320.is(itemEvent)) {
+        const { index, tally } = event.v9320.decode(itemEvent)
         return {
             index,
             ayes: tally.ayes,
@@ -146,48 +130,50 @@ export function getKilledData(ctx: BatchContext<Store, unknown>, itemEvent: Even
     }
 }
 
-export function getApprovedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): number {
-    const event = new ReferendaApprovedEvent(ctx, itemEvent)
-    if (event.isV9320) {
-        return event.asV9320.index
+export function getApprovedData(ctx: ProcessorContext<Store>, itemEvent: Event): number {
+    const event = events.referenda.approved
+
+    if (event.v9320.is(itemEvent)) {
+        return event.v9320.decode(itemEvent).index
     } else {
         throw new UnknownVersionError(event.constructor.name)
     }
 }
 
-export function getConfirmStartedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): number {
-    const event = new ReferendaConfirmStartedEvent(ctx, itemEvent)
-    if (event.isV9320) {
-        return event.asV9320.index
+export function getConfirmStartedData(ctx: ProcessorContext<Store>, itemEvent: Event): number {
+    const event = events.referenda.confirmStarted
+    if (event.v9320.is(itemEvent)) {
+        return event.v9320.decode(itemEvent).index
     } else {
         throw new UnknownVersionError(event.constructor.name)
     }
 }
 
-export function getConfirmAbortedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): number {
-    const event = new ReferendaConfirmAbortedEvent(ctx, itemEvent)
-    if (event.isV9320) {
-        return event.asV9320.index
+export function getConfirmAbortedData(ctx: ProcessorContext<Store>, itemEvent: Event): number {
+    const event = events.referenda.confirmAborted
+    if (event.v9320.is(itemEvent)) {
+        return event.v9320.decode(itemEvent).index
     } else {
         throw new UnknownVersionError(event.constructor.name)
     }
 }
 
 export interface PreimageInvalidData {
-    hash: Uint8Array
+    hash: string
     index: number
 }
 
-export function getPreimageInvalidData(ctx: BatchContext<Store, unknown>, itemEvent: Event): PreimageInvalidData {
-    const event = new DemocracyPreimageInvalidEvent(ctx, itemEvent)
-    if (event.isV1022) {
-        const [hash, index] = event.asV1022
+export function getPreimageInvalidData(ctx: ProcessorContext<Store>, itemEvent: Event): PreimageInvalidData {
+    const event = events.democracy.preimageInvalid
+
+    if (event.v1022.is(itemEvent)) {
+        const [hash, index] = event.v1022.decode(itemEvent)
         return {
             hash,
             index,
         }
-    } else if (event.isV9130) {
-        const { proposalHash: hash, refIndex: index } = event.asV9130
+    } else if (event.v9130.is(itemEvent)) {
+        const { proposalHash: hash, refIndex: index } = event.v9130.decode(itemEvent)
         return {
             hash,
             index,
@@ -198,20 +184,20 @@ export function getPreimageInvalidData(ctx: BatchContext<Store, unknown>, itemEv
 }
 
 export interface PreimageMissingData {
-    hash: Uint8Array
+    hash: string
     index: number
 }
 
-export function getPreimageMissingData(ctx: BatchContext<Store, unknown>, itemEvent: Event): PreimageMissingData {
-    const event = new DemocracyPreimageMissingEvent(ctx, itemEvent)
-    if (event.isV1022) {
-        const [hash, index] = event.asV1022
+export function getPreimageMissingData(ctx: ProcessorContext<Store>, itemEvent: Event): PreimageMissingData {
+    const event = events.democracy.preimageMissing
+    if (event.v1022.is(itemEvent)) {
+        const [hash, index] = event.v1022.decode(itemEvent)
         return {
             hash,
             index,
         }
-    } else if (event.isV9130) {
-        const { proposalHash: hash, refIndex: index } = event.asV9130
+    } else if (event.v9130.is(itemEvent)) {
+        const { proposalHash: hash, refIndex: index } = event.v9130.decode(itemEvent)
         return {
             hash,
             index,
@@ -222,22 +208,22 @@ export function getPreimageMissingData(ctx: BatchContext<Store, unknown>, itemEv
 }
 
 interface PreimageNotedData {
-    hash: Uint8Array
-    provider: Uint8Array
+    hash: string
+    provider: string
     deposit: bigint
 }
 
-export function getPreimageNotedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): PreimageNotedData {
-    const event = new DemocracyPreimageNotedEvent(ctx, itemEvent)
-    if (event.isV1022) {
-        const [hash, provider, deposit] = event.asV1022
+export function getPreimageNotedData(ctx: ProcessorContext<Store>, itemEvent: Event): PreimageNotedData {
+    const event = events.democracy.preimageNoted
+    if (event.v1022.is(itemEvent)) {
+        const [hash, provider, deposit] = event.v1022.decode(itemEvent)
         return {
             hash,
             provider,
             deposit,
         }
-    } else if (event.isV9130) {
-        const { proposalHash: hash, who: provider, deposit } = event.asV9130
+    } else if (event.v9130.is(itemEvent)) {
+        const { proposalHash: hash, who: provider, deposit } = event.v9130.decode(itemEvent)
         return {
             hash,
             provider,
@@ -249,22 +235,23 @@ export function getPreimageNotedData(ctx: BatchContext<Store, unknown>, itemEven
 }
 
 export interface PreimageReapedData {
-    hash: Uint8Array
-    provider: Uint8Array
+    hash: string
+    provider: string
     deposit: bigint
 }
 
-export function getPreimageReapedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): PreimageReapedData {
-    const event = new DemocracyPreimageReapedEvent(ctx, itemEvent)
-    if (event.isV1022) {
-        const [hash, provider, deposit] = event.asV1022
+export function getPreimageReapedData(ctx: ProcessorContext<Store>, itemEvent: Event): PreimageReapedData {
+    const event = events.democracy.preimageReaped
+
+    if (event.v1022.is(itemEvent)) {
+        const [hash, provider, deposit] = event.v1022.decode(itemEvent)
         return {
             hash,
             provider,
             deposit,
         }
-    } else if (event.isV9130) {
-        const { proposalHash: hash, provider, deposit } = event.asV9130
+    } else if (event.v9130.is(itemEvent)) {
+        const { proposalHash: hash, provider, deposit } = event.v9130.decode(itemEvent)
         return {
             hash,
             provider,
@@ -276,22 +263,23 @@ export function getPreimageReapedData(ctx: BatchContext<Store, unknown>, itemEve
 }
 
 export interface PreimageUsedData {
-    hash: Uint8Array
-    provider: Uint8Array
+    hash: string
+    provider: string
     deposit: bigint
 }
 
-export function getPreimageUsedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): PreimageUsedData {
-    const event = new DemocracyPreimageUsedEvent(ctx, itemEvent)
-    if (event.isV1022) {
-        const [hash, provider, deposit] = event.asV1022
+export function getPreimageUsedData(ctx: ProcessorContext<Store>, itemEvent: Event): PreimageUsedData {
+    const event = events.democracy.preimageUsed
+
+    if (event.v1022.is(itemEvent)) {
+        const [hash, provider, deposit] = event.v1022.decode(itemEvent)
         return {
             hash,
             provider,
             deposit,
         }
-    } else if (event.isV9130) {
-        const { proposalHash: hash, provider, deposit } = event.asV9130
+    } else if (event.v9130.is(itemEvent)) {
+        const { proposalHash: hash, provider, deposit } = event.v9130.decode(itemEvent)
         return {
             hash,
             provider,
@@ -305,16 +293,17 @@ export function getPreimageUsedData(ctx: BatchContext<Store, unknown>, itemEvent
 export interface ReferendumOpenGovEventData {
     index: number
     track: number
-    hash: Uint8Array
+    hash: string
     ayes: bigint
     nays: bigint
     support: bigint
 }
 
-export function getDecisionStartedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): ReferendumOpenGovEventData {
-    const event = new ReferendaDecisionStartedEvent(ctx, itemEvent)
-    if (event.isV9320) {
-        const { index, track, proposal, tally } = event.asV9320
+export function getDecisionStartedData(ctx: ProcessorContext<Store>, itemEvent: Event): ReferendumOpenGovEventData {
+    const event = events.referenda.decisionStarted
+
+    if (event.v9320.is(itemEvent)) {
+        const { index, track, proposal, tally } = event.v9320.decode(itemEvent)
         let hash
         switch (proposal.__kind) {
             case "Legacy":
@@ -343,14 +332,14 @@ export function getDecisionStartedData(ctx: BatchContext<Store, unknown>, itemEv
 export interface SubmittedData {
     index: number
     track: number
-    hash: Uint8Array
+    hash: string
     len: number | undefined
 }
 
-export function getSubmittedData(ctx: BatchContext<Store, unknown>, itemEvent: Event): SubmittedData {
-    const event = new ReferendaSubmittedEvent(ctx, itemEvent)
-    if (event.isV9320) {
-        const { index, track, proposal } = event.asV9320
+export function getSubmittedData(ctx: ProcessorContext<Store>, itemEvent: Event): SubmittedData {
+    const event = events.referenda.submitted
+    if (event.v9320.is(itemEvent)) {
+        const { index, track, proposal } = event.v9320.decode(itemEvent)
         let hash
         let len
         switch (proposal.__kind) {
@@ -379,27 +368,27 @@ export function getSubmittedData(ctx: BatchContext<Store, unknown>, itemEvent: E
 interface TabledEventData {
     index: number
     deposit: bigint
-    depositors?: Uint8Array[]
+    depositors?: string[]
 }
 
-export function getTabledEventData(ctx: BatchContext<Store, unknown>, itemEvent: Event): TabledEventData {
-    const event = new DemocracyTabledEvent(ctx, itemEvent)
-    if (event.isV1020) {
-        const [index, deposit, depositors] = event.asV1020
+export function getTabledEventData(ctx: ProcessorContext<Store>, itemEvent: Event): TabledEventData {
+    const event = events.democracy.tabled
+    if (event.v1020.is(itemEvent)) {
+        const [index, deposit, depositors] = event.v1020.decode(itemEvent)
         return {
             index,
             deposit,
             depositors,
         }
-    } else if (event.isV9130) {
-        const { proposalIndex: index, deposit, depositors } = event.asV9130
+    } else if (event.v9130.is(itemEvent)) {
+        const { proposalIndex: index, deposit, depositors } = event.v9130.decode(itemEvent)
         return {
             index,
             deposit,
             depositors,
         }
-    } else if (event.isV9320) {
-        const { proposalIndex: index, deposit } = event.asV9320
+    } else if (event.v9320.is(itemEvent)) {
+        const { proposalIndex: index, deposit } = event.v9320.decode(itemEvent)
         return {
             index,
             deposit
