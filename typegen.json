@@ -1,68 +1,167 @@
 {
   "outDir": "./src/types",
-  "specVersions": "https://kusama.archive.subsquid.io/graphql",
-  "storage": [
-    "Democracy.PublicPropCount",
-    "Balances.TotalIssuance",
-    "Democracy.Preimages",
-    "Preimage.PreimageFor",
-    "Democracy.PublicProps",
-    "Democracy.ReferendumInfoOf",
-    "TechnicalCommittee.ProposalOf",
-    "Council.ProposalOf",
-    "Instance2Collective.ProposalOf",
-    "Instance1Collective.ProposalOf",
-    "Session.Validators",
-    "Council.Members",
-    "Session.CurrentIndex",
-    "ElectionProviderMultiPhase.CurrentPhase",
-    "Referenda.ReferendumInfoFor"
-  ],
-  "events": [
-    "Democracy.Proposed",
-    "Democracy.Tabled",
-    "Democracy.Started",
-    "Democracy.Passed",
-    "Democracy.NotPassed",
-    "Democracy.Cancelled",
-    "Democracy.Executed",
-    "Democracy.PreimageNoted",
-    "Democracy.PreimageUsed",
-    "Democracy.PreimageInvalid",
-    "Democracy.PreimageMissing",
-    "Democracy.PreimageReaped",
-    "Council.Proposed",
-    "TechnicalCommittee.Proposed",
-    "TechnicalCommittee.Approved",
-    "Council.Approved",
-    "TechnicalCommittee.Approved",
-    "Session.NewSession",
-    "PhragmenElection.NewTerm",
-    "Referenda.Submitted",
-    "Referenda.Approved",
-    "Referenda.Cancelled",
-    "Referenda.Confirmed",
-    "Referenda.DecisionStarted",
-    "Referenda.Killed",
-    "Referenda.Rejected",
-    "Referenda.TimedOut",
-    "Referenda.ConfirmStarted",
-    "Referenda.ConfirmAborted",
-    "Preimage.Noted",
-    "Preimage.Requested",
-    "Preimage.Cleared"
-  ],
-  "calls": [
-    "Democracy.vote",
-    "Democracy.remove_vote",
-    "Democracy.remove_other_vote",
-    "System.remark",
-    "Democracy.delegate",
-    "Democracy.undelegate",
-    "ConvictionVoting.vote",
-    "ConvictionVoting.delegate",
-    "ConvictionVoting.undelegate",
-    "ConvictionVoting.remove_vote",
-    "ConvictionVoting.remove_other_vote"
-  ]
+  "specVersions": "https://v2.archive.subsquid.io/metadata/kusama",
+  "pallets": {
+    "ConvictionVoting": {
+      "events": [],
+      "calls": [
+        "delegate",
+        "undelegate",
+        "vote",
+        "remove_vote",
+        "remove_other_vote"
+      ],
+      "storage": [],
+      "constants": []
+    },
+    "Session": {
+      "events": [
+        "NewSession"
+      ],
+      "calls": [],
+      "storage": [
+        "Validators",
+        "CurrentIndex"
+      ],
+      "constants": []
+    },
+    "Balances": {
+      "events": [],
+      "calls": [],
+      "storage": [
+        "TotalIssuance"
+      ],
+      "constants": []
+    },
+    "Council": {
+      "events": [
+        "Proposed",
+        "Approved"
+      ],
+      "calls": [],
+      "storage": [
+        "Members",
+        "ProposalOf"
+      ],
+      "constants": []
+    },
+    "Democracy": {
+      "events": [
+        "Proposed",
+        "Tabled",
+        "Started",
+        "Passed",
+        "NotPassed",
+        "Cancelled",
+        "Executed",
+        "PreimageNoted",
+        "PreimageUsed",
+        "PreimageInvalid",
+        "PreimageMissing",
+        "PreimageReaped"
+      ],
+      "calls": [
+        "vote",
+        "remove_vote",
+        "delegate",
+        "remove_other_vote",
+        "undelegate"
+      ],
+      "storage": [
+        "Members",
+        "PublicPropCount",
+        "Preimages",
+        "PublicProps",
+        "ReferendumInfoOf"
+      ],
+      "constants": []
+    },
+    "Referenda": {
+      "events": [
+        "Submitted",
+        "Approved",
+        "Cancelled",
+        "Confirmed",
+        "DecisionStarted",
+        "Killed",
+        "Rejected",
+        "TimedOut",
+        "Executed",
+        "ConfirmStarted",
+        "ConfirmAborted"
+      ],
+      "calls": [],
+      "storage": [
+        "ReferendumInfoFor"
+      ],
+      "constants": []
+    },
+    "System": {
+      "events": [],
+      "calls": [
+        "remark"
+      ],
+      "storage": [],
+      "constants": []
+    },
+    "Preimage": {
+      "events": [
+        "Noted",
+        "Requested",
+        "Cleared"
+      ],
+      "calls": [
+        "remark"
+      ],
+      "storage": [
+        "PreimageFor"
+      ],
+      "constants": []
+    },
+    "TechnicalCommittee": {
+      "events": [
+        "Proposed",
+        "Approved"
+      ],
+      "calls": [],
+      "storage": [
+        "ProposalOf"
+      ],
+      "constants": []
+    },
+    "Instance2Collective": {
+      "events": [],
+      "calls": [],
+      "storage": [
+        "ProposalOf"
+      ],
+      "constants": []
+    },
+    "Instance1Collective": {
+      "events": [],
+      "calls": [],
+      "storage": [
+        "ProposalOf"
+      ],
+      "constants": []
+    },
+    "ElectionProviderMultiPhase": {
+      "events": [],
+      "calls": [],
+      "storage": [
+        "CurrentPhase"
+      ],
+      "constants": []
+    },
+    "PhragmenElection": {
+      "events": [
+        "NewTerm"
+      ],
+      "calls": [],
+      "storage": [
+        "CurrentPhase"
+      ],
+      "constants": []
+    }
+  }
 }
